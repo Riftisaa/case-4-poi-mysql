@@ -21,7 +21,7 @@ map.on("click", function (e) {
   var lat = e.latlng.lat;
   var lng = e.latlng.lng;
 
-  var marker = L.marker([lat, lng]).addTo(map);
+  var marker = L.marker([lat, lng], { draggable: true }).addTo(map);
   $("#nama_lokasi").val("");
   $("#deskripsi_lokasi").val("");
   $("#kategori_lokasi").val("");
@@ -92,10 +92,13 @@ function read_maps() {
           .bindPopup(popupContent)
           .on("click", function () {
             showUpdateModal(marker, popupContent);
+          })
+          .on('contextmenu', function () {
+            showDeleteModal(marker);
           });
 
         newMarker.on("contextmenu", function (e) {
-          hapusDataPOI(marker.latitude);
+          showDeleteModal(marker.latitude);
         });
       });
     },
@@ -106,31 +109,64 @@ function read_maps() {
 }
 
 function showUpdateModal(marker, popupContent) {
-    // Mengisi nilai input dengan data dari marker
-    $("#nama_lokasi").val(marker.nama_lokasi);
-    $("#deskripsi_lokasi").val(marker.deskripsi_lokasi);
-    $("#kategori_lokasi").val(marker.kategori_lokasi);
-    $("#jam_buka").val(marker.jam_buka);
-    $("#jam_tutup").val(marker.jam_tutup);
-    $("#kontak_lokasi").val(marker.kontak_lokasi);
+  // Mengisi nilai input dengan data dari marker
+  $("#nama_lokasi").val(marker.nama_lokasi);
+  $("#deskripsi_lokasi").val(marker.deskripsi_lokasi);
+  $("#kategori_lokasi").val(marker.kategori_lokasi);
+  $("#jam_buka").val(marker.jam_buka);
+  $("#jam_tutup").val(marker.jam_tutup);
+  $("#kontak_lokasi").val(marker.kontak_lokasi);
+
+  // Menyimpan data marker ke dalam variabel global
+  currentMarker = marker;
+  currentPopupContent = popupContent;
+
+  // Menampilkan modal
+  $("#poiModal").modal("show");
+}
+
+
+function showDeleteModal(marker) {
   
-    // Menyimpan data marker ke dalam variabel global
-    currentMarker = marker;
-    currentPopupContent = popupContent;
-  
+    currentMarker = marker;   
+
     // Menampilkan modal
-    $("#poiModal").modal("show");
+    $("#poiDelete").modal("show");
+
+    $("#deleteYa")
+  .on("click", function () {
+
+     $.ajax({
+      url: "delete_maps.php",
+      type: "POST",
+      data: {
+        lat: currentMarker.latitude,
+        lng: currentMarker.longitude,
+      },
+      success: function (response) {
+        console.log(response);
+      },
+    });
+    $("#poiDelete").modal("hide");
+  });
+
+
   }
-  
-  // Event listener untuk saat tombol "Update" diklik
-  $("#updatePOI").off("click").on("click", function () {
+
+
+
+
+// Event listener untuk saat tombol "Update" diklik
+$("#updatePOI")
+  .off("click")
+  .on("click", function () {
     var nama_lokasi = $("#nama_lokasi").val();
     var deskripsi_lokasi = $("#deskripsi_lokasi").val();
     var kategori_lokasi = $("#kategori_lokasi").val();
     var jam_buka = $("#jam_buka").val();
     var jam_tutup = $("#jam_tutup").val();
     var kontak_lokasi = $("#kontak_lokasi").val();
-  
+
     $.ajax({
       url: "update_maps.php",
       type: "POST",
@@ -147,36 +183,51 @@ function showUpdateModal(marker, popupContent) {
       success: function (response) {
         console.log(response);
         map.eachLayer(function (layer) {
-            if (layer instanceof L.Marker) {
-              if (layer.getLatLng().lat === currentMarker.latitude && layer.getLatLng().lng === currentMarker.longitude) {
-                map.removeLayer(layer);
-              }
+          if (layer instanceof L.Marker) {
+            if (
+              layer.getLatLng().lat === currentMarker.latitude &&
+              layer.getLatLng().lng === currentMarker.longitude
+            ) {
+              map.removeLayer(layer);
             }
-          });
-    
-          // Tambahkan marker baru dengan data yang telah diperbarui
-          var updatedPopupContent = createPopupContent({
-            latitude: currentMarker.latitude,
-            longitude: currentMarker.longitude,
-            nama_lokasi: nama_lokasi,
-            deskripsi_lokasi: deskripsi_lokasi,
-            kategori_lokasi: kategori_lokasi,
-            jam_buka: jam_buka,
-            jam_tutup: jam_tutup,
-            kontak_lokasi: kontak_lokasi
-          });
-    
-          var updatedMarker = L.marker([currentMarker.latitude, currentMarker.longitude])
-            .addTo(map)
-            .bindPopup(updatedPopupContent)
-            .openPopup();
-    
-          read_maps();
-        },
-        error: function (xhr, status, error) {
-          console.error("Terjadi kesalahan:", error);
-        },
-      });
-    
+          }
+        });
+
+        // Tambahkan marker baru dengan data yang telah diperbarui
+        var updatedPopupContent = createPopupContent({
+          latitude: currentMarker.latitude,
+          longitude: currentMarker.longitude,
+          nama_lokasi: nama_lokasi,
+          deskripsi_lokasi: deskripsi_lokasi,
+          kategori_lokasi: kategori_lokasi,
+          jam_buka: jam_buka,
+          jam_tutup: jam_tutup,
+          kontak_lokasi: kontak_lokasi,
+        });
+
+        var updatedMarker = L.marker([
+          currentMarker.latitude,
+          currentMarker.longitude,
+        ])
+          .addTo(map)
+          .bindPopup(updatedPopupContent)
+          .openPopup();
+
+        read_maps();
+      },
+      error: function (xhr, status, error) {
+        console.error("Terjadi kesalahan:", error);
+      },
+    });
+
     $("#poiModal").modal("hide");
   });
+
+
+$("#deleteNo").on("click", function () {
+    $("#poiDelete").modal("hide");
+});
+
+
+
+
